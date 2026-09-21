@@ -1,6 +1,6 @@
-# [Project name]
+# School Bookshop
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Private school book catalog where students browse Arabic and English books, see the final JOD selling price, and request hand delivery inside school.
 
 ## Run & Operate
 
@@ -22,23 +22,33 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/school-bookshop` — React/Vite catalog, book details, request form, organizer board, Arabic/English UI, and light/dark theme.
+- `artifacts/api-server/src/routes/books.ts` and `orders.ts` — catalog and school handoff request endpoints.
+- `lib/api-spec/openapi.yaml` — source of truth for the API contract and generated client hooks.
+- `lib/db/src/schema/books.ts` and `orders.ts` — persisted catalog and request tables.
+- `artifacts/api-server/src/lib/catalog.ts` — seed catalog and the selling-price markup rule.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The displayed price is a school selling price, not the Reshehbook source price: low-cost books receive a small fixed margin and higher-priced books receive a capped percentage-style margin rounded to the nearest half dinar.
+- The product intentionally supports browsing and school handoff requests, not shipping, carts, online payments, or public marketplace behavior.
+- Cover tones provide a reliable visual fallback when Reshehbook does not expose a permitted product image.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Students can search and filter a bilingual catalog, open book details, and request copies for collection at school.
+- The organizer can view requests and move them from pending to sourcing, ready, and handed over.
+- The interface remembers Arabic/English and light/dark preferences.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep the product focused on books for the user's school and hand delivery inside school.
+- Show final selling prices with a modest, transparent margin over source prices.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run `pnpm --filter @workspace/api-spec run codegen` after changing the OpenAPI contract.
+- The Vite build requires workflow-provided `PORT` and `BASE_PATH`; use the managed workflow or set both when running a manual build.
 
 ## Pointers
 

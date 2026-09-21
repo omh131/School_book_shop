@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: books
+    description: School book catalog
+  - name: orders
+    description: School handoff requests
 paths:
   /healthz:
     get:
@@ -24,6 +28,164 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /books:
+    get:
+      operationId: listBooks
+      tags: [books]
+      summary: List books in the catalog
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by English or Arabic title, author, or category
+        - in: query
+          name: language
+          schema:
+            type: string
+            enum: [all, arabic, english]
+          description: Filter by catalog language
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by category
+        - in: query
+          name: featured
+          schema:
+            type: boolean
+          description: Only return featured books
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Results page
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 120
+            default: 60
+          description: Results per page
+      responses:
+        "200":
+          description: Matching books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+  /books/{id}:
+    get:
+      operationId: getBook
+      tags: [books]
+      summary: Get one book
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Book not found
+  /catalog/summary:
+    get:
+      operationId: getCatalogSummary
+      tags: [books]
+      summary: Get catalog counts
+      responses:
+        "200":
+          description: Catalog summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogSummary"
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List school book requests
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [all, pending, sourcing, ready, handed]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Request a book for school handoff
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /orders/summary:
+    get:
+      operationId: getOrderSummary
+      tags: [orders]
+      summary: Get order status counts
+      responses:
+        "200":
+          description: Order summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderSummary"
+  /orders/{id}/status:
+    patch:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Move an order through the school handoff workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusUpdate"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Order not found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +195,155 @@ components:
           type: string
       required:
         - status
+    Book:
+      type: object
+      required:
+        - id
+        - title
+        - arabicTitle
+        - author
+        - language
+        - category
+        - sourcePrice
+        - sellingPrice
+        - sourceUrl
+        - description
+        - featured
+        - coverTone
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        arabicTitle:
+          type: [string, "null"]
+        author:
+          type: string
+        language:
+          type: string
+          enum: [arabic, english]
+        category:
+          type: string
+        sourcePrice:
+          type: number
+        sellingPrice:
+          type: number
+        sourceUrl:
+          type: string
+        description:
+          type: [string, "null"]
+        featured:
+          type: boolean
+        coverTone:
+          type: string
+        imageUrl:
+          type: [string, "null"]
+    CatalogSummary:
+      type: object
+      required:
+        - total
+        - arabic
+        - english
+        - featured
+      properties:
+        total:
+          type: integer
+        arabic:
+          type: integer
+        english:
+          type: integer
+        featured:
+          type: integer
+    Order:
+      type: object
+      required:
+        - id
+        - bookId
+        - bookTitle
+        - studentName
+        - className
+        - contact
+        - quantity
+        - price
+        - status
+        - notes
+        - createdAt
+      properties:
+        id:
+          type: integer
+        bookId:
+          type: integer
+        bookTitle:
+          type: string
+        studentName:
+          type: string
+        className:
+          type: string
+        contact:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+        status:
+          type: string
+          enum: [pending, sourcing, ready, handed]
+        notes:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+    OrderInput:
+      type: object
+      required:
+        - bookId
+        - studentName
+        - className
+        - contact
+        - quantity
+      properties:
+        bookId:
+          type: integer
+        studentName:
+          type: string
+          minLength: 2
+        className:
+          type: string
+          minLength: 1
+        contact:
+          type: string
+          minLength: 3
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 10
+        notes:
+          type: [string, "null"]
+    OrderStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, sourcing, ready, handed]
+    OrderSummary:
+      type: object
+      required:
+        - total
+        - pending
+        - sourcing
+        - ready
+        - handed
+      properties:
+        total:
+          type: integer
+        pending:
+          type: integer
+        sourcing:
+          type: integer
+        ready:
+          type: integer
+        handed:
+          type: integer
 

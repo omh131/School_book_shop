@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "School Bookshop"
+description = "A private school bookshop for browsing Arabic and English books, placing school handoff requests, and tracking orders with clear selling prices."
+version = "1.0.0"
+id = "artifacts/school-bookshop"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25932
+
+[services.development]
+run = "pnpm --filter @workspace/school-bookshop run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/school-bookshop", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/school-bookshop/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25932"
+BASE_PATH = "/"
