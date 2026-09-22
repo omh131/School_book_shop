@@ -19,3 +19,5 @@
 
 export * from "./books";
 export * from "./orders";
+export * from "./users";
+export * from "./book-change-requests";

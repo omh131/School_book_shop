@@ -12,10 +12,11 @@ import {
   UpdateOrderStatusResponse,
 } from "@workspace/api-zod";
 import { ensureBooksSeeded } from "../lib/catalog";
+import { requireAuthUser, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-router.get("/orders", async (req, res): Promise<void> => {
+router.get("/orders", requireRole("owner", "moderator"), async (req, res): Promise<void> => {
   const parsed = ListOrdersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -33,7 +34,16 @@ router.get("/orders", async (req, res): Promise<void> => {
   res.json(ListOrdersResponse.parse(orders));
 });
 
-router.post("/orders", async (req, res): Promise<void> => {
+router.get("/orders/mine", requireAuthUser, async (req, res): Promise<void> => {
+  const orders = await db
+    .select()
+    .from(ordersTable)
+    .where(eq(ordersTable.userId, req.appUser!.id))
+    .orderBy(desc(ordersTable.createdAt));
+  res.json(ListOrdersResponse.parse(orders));
+});
+
+router.post("/orders", requireAuthUser, async (req, res): Promise<void> => {
   await ensureBooksSeeded();
   const parsed = CreateOrderBody.safeParse(req.body);
   if (!parsed.success) {
@@ -53,6 +63,8 @@ router.post("/orders", async (req, res): Promise<void> => {
     .insert(ordersTable)
     .values({
       bookId: book.id,
+      userId: req.appUser!.id,
+      clerkUserId: req.clerkUserId!,
       bookTitle: book.arabicTitle
         ? `${book.title} / ${book.arabicTitle}`
         : book.title,
@@ -68,7 +80,7 @@ router.post("/orders", async (req, res): Promise<void> => {
   res.status(201).json(CreateOrderResponse.parse(order));
 });
 
-router.get("/orders/summary", async (_req, res): Promise<void> => {
+router.get("/orders/summary", requireRole("owner", "moderator"), async (_req, res): Promise<void> => {
   const grouped = await db
     .select({
       status: ordersTable.status,
@@ -90,7 +102,7 @@ router.get("/orders/summary", async (_req, res): Promise<void> => {
   );
 });
 
-router.patch("/orders/:id/status", async (req, res): Promise<void> => {
+router.patch("/orders/:id/status", requireRole("owner", "moderator"), async (req, res): Promise<void> => {
   const params = UpdateOrderStatusParams.safeParse(req.params);
   const body = UpdateOrderStatusBody.safeParse(req.body);
   if (!params.success || !body.success) {

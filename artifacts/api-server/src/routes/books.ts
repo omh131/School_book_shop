@@ -21,16 +21,15 @@ router.get("/books", async (req, res): Promise<void> => {
   }
 
   const { search, language, category, featured, page = 1, limit = 60 } = parsed.data;
-  const filters = [];
+  const filters = [eq(booksTable.isRomance, false)];
   if (search) {
-    filters.push(
-      or(
-        ilike(booksTable.title, `%${search}%`),
-        ilike(booksTable.arabicTitle, `%${search}%`),
-        ilike(booksTable.author, `%${search}%`),
-        ilike(booksTable.category, `%${search}%`),
-      ),
+    const searchFilter = or(
+      ilike(booksTable.title, `%${search}%`),
+      ilike(booksTable.arabicTitle, `%${search}%`),
+      ilike(booksTable.author, `%${search}%`),
+      ilike(booksTable.category, `%${search}%`),
     );
+    if (searchFilter) filters.push(searchFilter);
   }
   if (language && language !== "all") {
     filters.push(eq(booksTable.language, language));
@@ -62,7 +61,7 @@ router.get("/books/:id", async (req, res): Promise<void> => {
   const [book] = await db
     .select()
     .from(booksTable)
-    .where(eq(booksTable.id, parsed.data.id));
+    .where(and(eq(booksTable.id, parsed.data.id), eq(booksTable.isRomance, false)));
   if (!book) {
     res.status(404).json({ error: "Book not found" });
     return;
@@ -73,7 +72,7 @@ router.get("/books/:id", async (req, res): Promise<void> => {
 
 router.get("/catalog/summary", async (_req, res): Promise<void> => {
   await ensureBooksSeeded();
-  const books = await db.select().from(booksTable);
+  const books = await db.select().from(booksTable).where(eq(booksTable.isRomance, false));
   res.json(
     GetCatalogSummaryResponse.parse({
       total: books.length,

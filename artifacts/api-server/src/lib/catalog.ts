@@ -1,5 +1,5 @@
 import { db, booksTable } from "@workspace/db";
-import { count } from "drizzle-orm";
+import { count, eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
 const markup = (sourcePrice: number) => {
@@ -14,6 +14,7 @@ export const sellingPriceFor = (sourcePrice: number) =>
 
 let seedPromise: Promise<void> | null = null;
 let syncPromise: Promise<void> | null = null;
+let romancePurgePromise: Promise<void> | null = null;
 
 const seedBooks = [
   {
@@ -163,6 +164,7 @@ const seedBooks = [
 ];
 
 export async function ensureBooksSeeded() {
+  await purgeRomanceBooks();
   if (seedPromise) return seedPromise;
 
   seedPromise = (async () => {
@@ -184,6 +186,27 @@ export async function ensureBooksSeeded() {
   } catch (error) {
     seedPromise = null;
     throw error;
+  }
+}
+
+function isRomanceBook(book: { title: string; arabicTitle?: string | null; category?: string | null }) {
+  const text = `${book.title} ${book.arabicTitle ?? ""} ${book.category ?? ""}`.toLowerCase();
+  return /(romance|romantic|love story|pride and prejudice|jane eyre|رومانسي|رومانس|عشق|حب|كبرياء وهوى)/i.test(text);
+}
+
+async function purgeRomanceBooks() {
+  if (romancePurgePromise) return romancePurgePromise;
+  romancePurgePromise = (async () => {
+    const books = await db
+      .select({ id: booksTable.id, title: booksTable.title, arabicTitle: booksTable.arabicTitle, category: booksTable.category, isRomance: booksTable.isRomance })
+      .from(booksTable);
+    const ids = books.filter((book) => book.isRomance || isRomanceBook(book)).map((book) => book.id);
+    if (ids.length) await db.delete(booksTable).where(inArray(booksTable.id, ids));
+  })();
+  try {
+    await romancePurgePromise;
+  } finally {
+    romancePurgePromise = null;
   }
 }
 
@@ -255,9 +278,15 @@ export async function syncReshehbookCatalog() {
           sourceUrl,
           description: descriptionFor(product),
           featured: false,
+          isRomance: isRomanceBook({
+            title: product.title,
+            arabicTitle: arabicText.test(product.title) ? product.title : null,
+            category: categoryFor(product),
+          }),
           coverTone: arabicText.test(product.title) ? "coral" : "plum",
           imageUrl: product.images?.[0]?.src || null,
         });
+        if (incoming[incoming.length - 1].isRomance) incoming.pop();
         known.add(sourceUrl);
       }
 

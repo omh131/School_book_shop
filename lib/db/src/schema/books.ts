@@ -14,6 +14,7 @@ export const booksTable = pgTable("books", {
   sourceUrl: text("source_url").notNull(),
   description: text("description"),
   featured: boolean("featured").notNull().default(false),
+  isRomance: boolean("is_romance").notNull().default(false),
   coverTone: text("cover_tone").notNull().default("plum"),
   imageUrl: text("image_url"),
 });
